@@ -8,10 +8,13 @@ from dotenv import load_dotenv
 import os
 
 # ----------------------------
-# Load API Key from .env.txt
+# Load API Key from .env
 # ----------------------------
-load_dotenv(".env.txt")
+load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
+
+# Create OpenAI client for >=1.0.0
+client = openai.OpenAI(api_key=openai_api_key)
 
 # ----------------------------
 # Page config
@@ -46,16 +49,16 @@ Your task is to extract all requirements clearly and separately:
 2. Each sub-requirement as a separate item.
 Output each as its own line.
 Now extract all such requirements from the following specification:
-"""
-    response = openai.ChatCompletion.create(
+""" + text
+
+    response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are an expert in construction specification extraction."},
-            {"role": "user", "content": prompt + text}
+            {"role": "user", "content": prompt}
         ],
         temperature=0,
-        max_tokens=4000,
-        api_key=openai_api_key
+        max_tokens=4000
     )
     return response.choices[0].message.content.strip()
 
@@ -89,15 +92,14 @@ Step 2 – At the end, write:
 
 Only use the format above.
 """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are an expert in construction compliance validation."},
             {"role": "user", "content": prompt}
         ],
         temperature=0,
-        max_tokens=4000,
-        api_key=openai_api_key
+        max_tokens=4000
     )
     return response.choices[0].message.content.strip()
 
@@ -106,7 +108,7 @@ Only use the format above.
 # ----------------------------
 if st.button("✅ Run Validation"):
     if not openai_api_key:
-        st.error("❌ API key is missing. Please set it in your .env.txt file.")
+        st.error("❌ API key is missing. Please set it in your .env file.")
     elif not spec_file or not doc_file:
         st.warning("⚠️ Please upload both the specification and the document.")
     else:
@@ -116,7 +118,6 @@ if st.button("✅ Run Validation"):
                 doc_text = extract_text_from_docx(doc_file) if doc_file.name.endswith(".docx") else extract_text_from_pdf(doc_file)
                 requirements_text = extract_requirements_from_spec(spec_text)
                 validation_result = validate_document_against_requirements(doc_text, requirements_text)
-
                 st.success("✅ Validation Complete")
 
                 # 🔹 Show full validation list
