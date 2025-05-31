@@ -4,13 +4,14 @@ import streamlit as st
 import openai
 from PyPDF2 import PdfReader
 from docx import Document
+import tempfile
 from dotenv import load_dotenv
 import os
 
 # ----------------------------
-# Load API Key from .env.txt
+# Load API Key from .env
 # ----------------------------
-load_dotenv(".env.txt")
+load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
 # ----------------------------
@@ -67,27 +68,8 @@ The following is the content of a construction quality document:
 Validate against the following requirements:
 {requirements_text}
 
-🔧 Output Format:
-
-Step 1 – For each requirement, output:
-**<number>. <Requirement>**
-- **Status:** Met / Partially Met / Missing
-- **Reason:** short justification (mention evidence if Met or what’s missing if not)
-
-Step 2 – At the end, write:
-**Summary of Missing and Partially Met Requirements:**
-
-- **Missing:**
-1. ...
-2. ...
-
-- **Partially Met:**
-1. ...
-2. ...
-
-⚠️ Be precise. If a requirement has multiple components, clearly state what is met and what is missing. Use clause references if applicable.
-
-Only use the format above.
+For each requirement, state whether it is Met / Partially Met / Missing.
+Summarize only the missing and partially met ones at the end.
 """
     response = openai.ChatCompletion.create(
         model="gpt-4o",
@@ -106,7 +88,7 @@ Only use the format above.
 # ----------------------------
 if st.button("✅ Run Validation"):
     if not openai_api_key:
-        st.error("❌ API key is missing. Please set it in your .env.txt file.")
+        st.error("❌ API key is missing. Please set it in your .env file.")
     elif not spec_file or not doc_file:
         st.warning("⚠️ Please upload both the specification and the document.")
     else:
@@ -114,26 +96,10 @@ if st.button("✅ Run Validation"):
             with st.spinner("🔍 Extracting and validating..."):
                 spec_text = extract_text_from_docx(spec_file) if spec_file.name.endswith(".docx") else extract_text_from_pdf(spec_file)
                 doc_text = extract_text_from_docx(doc_file) if doc_file.name.endswith(".docx") else extract_text_from_pdf(doc_file)
-                requirements_text = extract_requirements_from_spec(spec_text)
-                validation_result = validate_document_against_requirements(doc_text, requirements_text)
-
+                requirements = extract_requirements_from_spec(spec_text)
+                validation_result = validate_document_against_requirements(doc_text, requirements)
                 st.success("✅ Validation Complete")
-
-                # 🔹 Show full validation list
-                st.markdown("### 🧾 Full Validation Output:")
-                summary_marker = "**Summary of Missing and Partially Met Requirements:**"
-                if summary_marker in validation_result:
-                    full_list = validation_result.split(summary_marker)[0].strip()
-                    st.text_area("Validation Output", full_list, height=500)
-
-                    # 🔹 Show clean summary only
-                    st.markdown("### 📌 Summary of Missing and Partially Met Requirements:")
-                    summary_part = validation_result.split(summary_marker)[-1].strip()
-                    summary_part = f"{summary_marker}\n\n{summary_part}"
-                    st.text_area("Summary Output", summary_part, height=400)
-                else:
-                    st.text_area("Validation Output", validation_result, height=800)
-                    st.warning("⚠️ Summary section not found in the result.")
-
+                st.markdown("### 📊 Result:")
+                st.text_area("Validation Output", validation_result, height=400)
         except Exception as e:
             st.error(f"An error occurred: {e}")
