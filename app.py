@@ -89,7 +89,7 @@ Step 2 – At the end, write:
 
 Only use the format above.
 """
-    response = openai.client.chat.completions.create(
+    response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are an expert in construction compliance validation."},
